@@ -1,0 +1,50 @@
+import pandas as pd
+import numpy as np
+
+# 1. ЗАГРУЗКА ДАННЫХ
+df = pd.read_csv('dataset.csv')
+
+# 2. ОЧИСТКА
+# Удаляем полные дубликаты строк
+df = df.drop_duplicates()
+# Удаляем столбцы, где ВСЕ значения — пропуски (таких нет, но для надежности)
+df = df.dropna(axis=1, how='all')
+# Убираем лишние пробелы в начале и конце у текстовых столбцов
+# Находим их более надежным способом
+text_columns = df.select_dtypes(include=['object', 'str']).columns
+for col in text_columns:
+    df[col] = df[col].str.strip()
+
+# 3. ОБРАБОТКА ПРОПУСКОВ (ЕСЛИ БЫ ОНИ БЫЛИ)
+# Для числовых столбцов — заполняем средним
+numeric_cols = df.select_dtypes(include=[np.number]).columns
+for col in numeric_cols:
+    # Новый, правильный способ заполнения
+    df[col] = df[col].fillna(df[col].mean())
+
+# Для текстовых/категориальных — заполняем самой частой категорией (модой)
+for col in text_columns:
+    if df[col].isnull().any():
+        # mode()[0] — самое частое значение
+        df[col] = df[col].fillna(df[col].mode()[0])
+
+# 4. ПРИВЕДЕНИЕ ТИПОВ
+# Числовые столбцы, которые случайно стали float, превращаем обратно в int
+for col in numeric_cols:
+    if df[col].dtype == 'float64' and (df[col] == df[col].astype(int)).all():
+        df[col] = df[col].astype(int)
+
+# Преобразуем текстовые столбцы в тип 'category' для экономии памяти
+for col in text_columns:
+    # Если уникальных значений не очень много
+    if df[col].nunique() < df.shape[0] * 0.5:
+        df[col] = df[col].astype('category')
+
+print("ПОСЛЕ ОБРАБОТКИ:")
+print(f"\nИтоговый размер датасета: {df.shape}")
+print("\nТипы данных:")
+print(df.dtypes)
+
+# 5. СОХРАНЕНИЕ
+df.to_csv('dataset_cleaned.csv', index=False)
+print("\nГотово! Файл 'dataset_cleaned.csv' сохранен.")
