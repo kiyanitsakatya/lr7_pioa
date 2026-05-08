@@ -1,0 +1,105 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import plotly.express as px
+
+# Загружаем данные
+df = pd.read_csv('dataset_cleaned.csv')
+
+#SEABORN
+
+# 1. Гистограмма (распределение возраста)
+plt.figure(figsize=(8, 4))
+sns.histplot(df['age'], bins=20, kde=True)
+plt.title('Распределение возраста сотрудников')
+plt.xlabel('Возраст')
+plt.ylabel('Количество')
+plt.show()
+
+# 2. Точечный график (опыт vs доход)
+plt.figure(figsize=(8, 4))
+sns.scatterplot(data=df, x='experience', y='income', hue='department')
+plt.title('Зависимость дохода от опыта работы')
+plt.xlabel('Опыт (лет)')
+plt.ylabel('Доход ($)')
+plt.legend(title='Отдел')
+plt.show()
+
+# 3. Ящик с усами (доход по отделам)
+plt.figure(figsize=(8, 4))
+sns.boxplot(data=df, x='department', y='income')
+plt.title('Распределение дохода по отделам')
+plt.xlabel('Отдел')
+plt.ylabel('Доход ($)')
+plt.show()
+
+# 4. Тепловая карта корреляций
+plt.figure(figsize=(8, 6))
+# Берем только числовые столбцы
+numeric_df = df[['age', 'income', 'experience', 'years_at_company', 'performance_score']]
+corr = numeric_df.corr()
+sns.heatmap(corr, annot=True, cmap='coolwarm', fmt='.2f')
+plt.title('Корреляция между числовыми признаками')
+plt.show()
+
+#PLOTLY
+
+# 1. Точечный график (интерактивный)
+fig = px.scatter(df, x='experience', y='income', color='department',
+                 title='Доход vs Опыт (интерактивный)',
+                 labels={'experience': 'Опыт (лет)', 'income': 'Доход ($)'})
+fig.show()
+
+# 2. Линейный график (средний доход по возрастам)
+age_income = df.groupby('age')['income'].mean().reset_index()
+fig = px.line(age_income, x='age', y='income',
+              title='Средний доход по возрастам',
+              labels={'age': 'Возраст', 'income': 'Средний доход ($)'})
+fig.show()
+
+# 3. Столбчатая диаграмма (количество сотрудников по отделам)
+dept_count = df['department'].value_counts().reset_index()
+dept_count.columns = ['department', 'count']
+fig = px.bar(dept_count, x='department', y='count',
+             title='Количество сотрудников по отделам',
+             labels={'department': 'Отдел', 'count': 'Количество'})
+fig.show()
+
+# 4. Тепловая карта (корреляции)
+fig = px.imshow(corr, text_auto=True, aspect='auto',
+                title='Тепловая карта корреляций (интерактивная)',
+                labels={'color': 'Корреляция'})
+fig.show()
+
+# 5. ИНТЕРАКТИВНЫЙ ЭЛЕМЕНТ (выпадающий список - выбор отдела)
+# Создаем кнопки для фильтрации по отделам
+fig = px.histogram(df, x='performance_score', nbins=20,
+                   title='Распределение оценок эффективности (выберите отдел)',
+                   labels={'performance_score': 'Оценка эффективности'})
+
+# Добавляем кнопки
+depts = ['Все'] + list(df['department'].unique())
+buttons = []
+for dept in depts:
+    if dept == 'Все':
+        filtered_df = df
+    else:
+        filtered_df = df[df['department'] == dept]
+
+    buttons.append(dict(
+        label=dept,
+        method='update',
+        args=[{'x': [filtered_df['performance_score']],
+               'type': 'histogram'}]
+    ))
+
+fig.update_layout(
+    updatemenus=[dict(
+        buttons=buttons,
+        direction='down',
+        showactive=True,
+        x=0.1,
+        y=1.1
+    )]
+)
+fig.show()
